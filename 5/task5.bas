@@ -1,50 +1,125 @@
-'PIC16F884
+'PIC16F876
 'open Tools->LCD Module
 'open Tools->Microcontroller View
 'change analog Ra0
-'настройки LCD модуля
+
+
+
+
+
+Symbol zaryadka = PORTC.0  'Включает и выключает зарядку АКБ.должна быть выкл по умолчанию
+Gosub off_zaryadka
+
+Symbol razryad = PORTC.4  'Включает и выключает разрядку АКБ через нагрузку.'должна быть вкл по умолчанию
+Gosub on_razryad
+
+Symbol power = PORTC.5  'Кнопка для включения устройства и начала зарядки АКБ(после вставки АКБ)
+
+
+Dim mod_zaryadka As Bit  'Включает и выключает режим зарядки
+mod_zaryadka = 0
+
+
+
+TRISA = %11111111
+PORTA = %00000000
+TRISC = %11001110
+PORTC = %00110000
+
+
+'Настройка LCD модуля
 Define LCD_BITS = 8
 Define LCD_DREG = PORTB
 Define LCD_DBIT = 0
-Define LCD_RSREG = PORTD
+Define LCD_RSREG = PORTC
 Define LCD_RSBIT = 1
-Define LCD_EREG = PORTD
+Define LCD_EREG = PORTC
 Define LCD_EBIT = 3
-Define LCD_RWREG = PORTD
+Define LCD_RWREG = PORTC
 Define LCD_RWBIT = 2
 
-TRISA = %11111111  'Все порты А на приём (включаем АЦП на них)
+Dim voltage_akb As Single
+Dim current_akb As Single
 
-Dim power As Single  'напряжение питания
-power = 5  'voltage
-Dim an0 As Long  'Объявили переменную для записи в неё значения из АЦП порта А0
-Dim voltage_vd As Single  'напряжение на диоде
+Dim vol As Word  'Переменная для записи напряжения батареи с AN0
+Dim cur As Word  'Переменная для записи тока батареи с AN1
 
-Lcdinit 1  'Инициализировали коретку на ЛСД модуле
+Lcdinit 0
 
-loop:  'указатель для GOTO
-	Adcin 0, an0  'записали значения из АЦП в переменную
-	voltage_vd = power * an0 / 1024  'расчет напряжения на диоде
-	Lcdout "voltage:", #voltage_vd, "V"  'выведи на ЛСД экран надпись с значением переменной
-	Lcdcmdout LcdLine2Home  'переместили каретку на 2 строку
 
-	If voltage_vd < 1.6 Then
-		Lcdout "VD is INFRARED!"
-	Endif
-	If voltage_vd > 1.6 And voltage_vd < 2.03 Then
-		Lcdout "VD is RED!"
-	Endif
-	If voltage_vd > 2.03 And voltage_vd < 2.1 Then
-		Lcdout "VD is ORANGE!"
-	Endif
-	If voltage_vd > 2.1 And voltage_vd < 2.2 Then
-		Lcdout "VD is YELLOW!"
-	Endif
-	If voltage_vd > 2.2 And voltage_vd < 3.5 Then
-		Lcdout "VD is GREEN!"
+
+
+main:
+
+	If power Then
+			
+			Adcin 0, vol  'Сняли значение напряжения на АКБ
+			Adcin 1, cur  'Сняли значение тока на АКБ
+			
+			voltage_akb = vol * 5 / 1023
+			current_akb = cur * 5 / 1023
+			
+			Lcdout "Voltage: ", #voltage_akb, "V"
+			Lcdcmdout LcdLine2Home
+			Lcdout "Current: ", #current_akb, "A"
+			
+			
+			If voltage_akb < 2.8 Then
+				mod_zaryadka = 1
+			Endif
+			
+			If voltage_akb > 4.2 Then
+				mod_zaryadka = 0
+			Endif
+			
+			
+			
+
+	Else  'ввели устройство в изначальное положение
+		Gosub off_zaryadka
+		Gosub on_razryad
+		
+		
 	Endif
 	
 	
-	WaitMs 200
-	Lcdcmdout LcdClear  'очистка  LCD
-Goto loop  'вернулись на указатель loop
+'Adcin 0, an0
+
+'Lcdout "Voltage: ", #an0, "mV"
+
+'Lcdcmdout LcdLine2Home
+
+'Lcdout "Capacity: ", #an0, "mah"
+
+WaitMs 100
+Lcdcmdout LcdClear
+
+Goto main
+End                                               
+
+on_zaryadka:
+zaryadka = 1
+Return                                            
+
+
+off_zaryadka:
+zaryadka = 1
+Return                                            
+
+
+on_razryad:
+razryad = 0
+Return                                            
+
+off_razryad:
+razryad = 1
+Return                                            
+
+
+
+
+
+
+
+
+
